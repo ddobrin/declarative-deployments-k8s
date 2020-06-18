@@ -1,4 +1,4 @@
-# Demo for Blue-Green deployments in Kubernetes
+# Demo for Declarative Deployments in Kubernetes
 
 The demo applications in this repo are leveraging Spring Cloud Kubernetes and *DO NOT* use a service discovery mechanism (Consul, Eureka, etc). It runs in any Kubernetes distribution.
 
@@ -69,7 +69,7 @@ kubectl apply -f security.yaml
 # substitute values for username and password
 kubectl apply -f dockercred.yaml 
 ```
-
+<a name="2"></a>
 # Rolling Deployment
 ```shell
 kubectl get deploy
