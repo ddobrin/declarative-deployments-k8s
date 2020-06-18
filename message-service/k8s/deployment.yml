@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: message-service
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: message-service
+  template:
+    metadata:
+      labels:
+        app: message-service
+        version: blue
+    spec:
+      serviceAccountName: "spring-cloud"
+      imagePullSecrets:
+        - name: regcreddocker
+      containers:
+      - image: triathlonguy/message-service:blue
+        imagePullPolicy: IfNotPresent
+        name: message-service
+        ports:
+          - containerPort: 8080
+        env:
+          - name: "JAVA_OPTS"
+            value: "-XshowSettings:vm -XX:MaxRAMPercentage=75.0"
+          - name: "service_version"
+            value: "blue"
+        resources:
+          requests:
+            cpu: 250m
+            memory: 384M
+          limits:
+            cpu: 250m
+            memory: 384M
+#        livenessProbe:
+#          initialDelaySeconds: 10
+#          periodSeconds: 5
+#          httpGet:
+#            port: 8080
+#            path: /alive
+#        readinessProbe:
+#          initialDelaySeconds: 5
+#          periodSeconds: 5
+#          httpGet:
+#            port: 8080
+#            path: /actuator/health
+
+
+
+

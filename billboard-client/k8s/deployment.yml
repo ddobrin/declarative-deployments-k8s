@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: billboard-client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: billboard-client
+  template:
+    metadata:
+      labels:
+        app: billboard-client
+    spec:
+      serviceAccountName: "spring-cloud"
+      imagePullSecrets:
+        - name: regcreddocker
+      containers:
+      - image: triathlonguy/billboard-client:blue
+        imagePullPolicy: IfNotPresent
+        name: billboard-client
+        ports:
+          - containerPort: 8080
+        resources:
+          requests:
+            cpu: 250m
+            memory: 384M
+          limits:
+            cpu: 250m
+            memory: 384M

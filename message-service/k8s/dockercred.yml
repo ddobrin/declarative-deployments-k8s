@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: regcreddocker
+  annotations:
+    build.pivotal.io/docker: https://index.docker.io/v1/
+type: kubernetes.io/basic-auth
+stringData:
+  username: triathlonguy
+  password: xxxyyyzzz
