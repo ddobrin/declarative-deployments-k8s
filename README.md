@@ -1,8 +1,22 @@
-# Demo for Declarative Deployments in Kubernetes
+# Patterns for Declarative Deployments in Kubernetes
 
 The demo applications in this repo are leveraging Spring Cloud Kubernetes and *DO NOT* use a service discovery mechanism (Consul, Eureka, etc). It runs in any Kubernetes distribution.
 
-## The Kubernetes model for connecting containers
+## Why do anything?
+Isolated environments can be provisioned in a self-service manner with minimal human intervention through the Kubernetes scheduler, however, with a growing number of microservices, continually updating and replacing them with newer versions becomes an increasing burden. 
+
+Provisioning processes allow for some or no downtime, however at the expense of increased resource consumption. 
+
+We need to be aware that manual or scripted processes are error prone, respectively effort-intensive, which could bottleneck the software release process.
+
+
+## What are Declarative Deployments?
+The concept of Deployments in Kubernetes encapsulates the upgrade and rollback processes of a group of containers and makes its execution a repeatable and automated activity. 
+
+It allows us to describe how an application should be updated, based on different strategies and allowing for the fine-tuning of the various aspects of the deployment process
+
+
+## Connecting applications in Kubernetes - the K8s model for connecting containers 
 Once you have a continuously running, replicated application you can expose it on a network. Before discussing the Kubernetes approach to networking, it is worthwhile to contrast it with the “normal” way networking works with Docker.
 
 By default, Docker uses host-private networking, so containers can talk to other containers only if they are on the same machine. In order for Docker containers to communicate across nodes, there must be allocated ports on the machine’s own IP address, which are then forwarded or proxied to the containers. This obviously means that containers must either coordinate which ports they use very carefully or ports must be allocated dynamically.
@@ -11,7 +25,7 @@ Coordinating port allocations across multiple developers or teams that provide c
 
 How to explore the declarative models:
 1. [Demo - Initial Setup](#1)
-2. [Demo - Install demo Client app](#2)
+2. [Demo - Install the Demo Client app](#2)
 
 ### Zero downtime app deployments
 3. [Rolling Deployments](#3)
@@ -24,6 +38,8 @@ How to explore the declarative models:
 
 <a name="1"></a>
 ## Demo Setup
+
+#### Clean-up previously deployed resources, if any
 ```shell
 # clean-up previous images
 docker images | grep message-service
@@ -31,13 +47,15 @@ docker images | grep message-service | awk '{print $3}' | xargs docker rmi -f
 
 docker images | grep billboard-client
 docker images | grep billboard-client | awk '{print $3}' | xargs docker rmi -f
+```
 
+#### Set up demo artifacts
 ```shell
 # clone the Git repo
 git clone git@github.com:ddobrin/declarative-deployments-k8s.git
 cd declarative-deployments-k8s/
 
-# build the code
+# build the source code
 mvn clean package
 
 # build images with tags 1.0 and 1.1 - for rolling, fixed, canary
@@ -49,7 +67,7 @@ triathlonguy/message-service                                                    
 triathlonguy/billboard-client                                                                   1.0                      47d6fe4af2dd        2 minutes ago       285MB
 triathlonguy/billboard-client                                                                   1.1                      47d6fe4af2dd        2 minutes ago       285MB
 
-# build images with tags blue and greeen - rof blue-green deployments
+# build images with tags blue and greeen - for blue-green deployments
 ./build-images-bluegreen.sh
 
 triathlonguy/message-service                                                                    1.0                      fcc3c30ee3c5        6 minutes ago       302MB
@@ -71,13 +89,16 @@ kubectl apply -f dockercred.yaml
 ```
 
 <a name="2"></a>
-# Demo - Install demo Client app
+# Demo - Install the Demo Client app
 
-#### Please note :
+__Please note:__
 * this demo client is to be installed after an initial deployment for one of the 4 declarative deployment demo's illustrated in this repo.
 
-The client app is a billboard-client app displaying quotes provided by the message-service:
+The client app is a billboard-client app displaying quotes provided by the message-service.
+
+#### Set-up steps
 ```shell
+# client app K8s resources
 cd <repo_root>/billboard-client/k8s
 
 # deploy the client app
@@ -103,7 +124,8 @@ billboard-client   LoadBalancer   10.0.14.43   34.70.147.241   8080:30423/TCP   
 message-service    NodePort       10.0.3.237   <none>          8080:31787/TCP   15h 
 ```
 
-The service can be queried at the external IP and the exposed port 8080
+#### Testing the back-end service using the client app
+The service can be queried at the external IP and the exposed port 8080 :
 ```shell
 curl <external IP>:8080/message
 
@@ -112,10 +134,10 @@ curl <external IP>:8080/message
 Service version: 1.1 - Quote: The shortest answer is doing -- Lord Herbert
 ```
 
-#### Please note:
+__Please note:__
 * The service for the client app will be available to route requests to the message-service and does not have to be restarted after testing various deployment strategies
 
-The Client app clean-up : 
+#### Client-app cleanup 
 ```shell
 kubectl delete deploy billboard-client
 ```
@@ -123,7 +145,7 @@ kubectl delete deploy billboard-client
 <a name="3"></a>
 # Rolling Deployment
 
-Clean-up resources before running this demo :
+#### Clean-up resources before running this demo
 ```shell
 kubectl get deploy
 kubectl get svc
@@ -132,29 +154,28 @@ kubectl get svc
 kubectl delete deploy message-service
 ```
 
-Start deploying the resources for the demo :
+#### Start deploying the resources for the Rolling Deployment demo
 ```shell
 # deploy v 1.0
-cd <repo_root>/message-service/k8s/rolling
-kubectl deployment-rolling-1.0.yml
+> cd <repo_root>/message-service/k8s/rolling
+> kubectl deployment-rolling-1.0.yml
 
 # validate deployment
-dandobrin@vmwin-008:~/work/demo/declarative-deployments-k8s/message-service/k8s/rolling:>k get pod
+> k get pod
 NAME                               READY   STATUS    RESTARTS   AGE
 message-service-5566ff65cd-crf2j   1/1     Running   0          39s
 message-service-5566ff65cd-f4b46   1/1     Running   0          39s
 message-service-5566ff65cd-q4kd7   1/1     Running   0          39s
-dandobrin@vmwin-008:~/work/demo/declarative-deployments-k8s/message-service/k8s/rolling:>k get deploy
+
+> k get deploy
 NAME              READY   UP-TO-DATE   AVAILABLE   AGE
 message-service   3/3     3            3           47s
-dandobrin@vmwin-008:~/work/demo/declarative-deployments-k8s/message-service/k8s/rolling:>
 
 # deploy service exposing a NodePort
 kubectl apply -f service.yml
 
 # access the endpoints on the node and run some curl requests
 kubectl get ep
-
 # example
 NAME              ENDPOINTS                                         AGE
 kubernetes        35.222.17.85:443                                  2d5h
@@ -162,11 +183,12 @@ message-service   10.24.0.38:8080,10.24.1.51:8080,10.24.1.52:8080   16s
 
 # you can access the service also via the NodePort IP of the Service
 kubectl get svc
+# example
 NAME              TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)          AGE
 kubernetes        ClusterIP   10.0.0.1     <none>        443/TCP          2d5h
 message-service   NodePort    10.0.3.237   <none>        8080:31787/TCP   15m
 
-# run an NGINX pod
+# run an NGINX pod to access the message-service using the NodePort
 kubectl run nginx --restart=Never --rm --image=nginx -it -- bash
 curl <select-one-message-service-endpoint>
 curl <select-one-message-service-endpoint>/quotes
@@ -181,7 +203,7 @@ root@nginx:/# curl 10.24.0.38:8080
 root@nginx:/# curl 10.0.3.237:8080
 # Service version indicates : version 1.0 at this time
 # using service NodePort IP
-{"id":5,"quote":"Service version: 1.0 - Quote: The shortest answer is doing","author":"Lord Herbert"}root@nginx:/# curl 10.0.3.237:31787
+{"id":5,"quote":"Service version: 1.0 - Quote: The shortest answer is doing","author":"Lord Herbert"}
 
 # Update the deployment to version 1.1 
 # for demo purposes, an environment variable is also modified to indicate the version
@@ -200,7 +222,7 @@ root@nginx:/# curl 10.0.3.237:8080
 {"id":2,"quote":"Service version: 1.1 - Quote: While there's life, there's hope","author":"Marcus Tullius Cicero"
 ```
 
-Clean-up resources before running this demo :
+#### Clean-up resources after running this demo for rolling deployments
 ```shell
 kubectl get deploy
 kubectl get svc
@@ -212,6 +234,121 @@ kubectl delete deploy message-service
 <a name="4"></a>
 # Fixed Deployment
 
+#### Clean-up resources before running this demo
+```shell
+kubectl get deploy
+kubectl get svc
+
+# delete existing resources
+kubectl delete deploy message-service
+```
+#### Start deploying the resources for the Fixed Deployment demo
+```shell
+# deploy v 1.0
+> cd <repo_root>/message-service/k8s/fixed
+> kubectl deployment-fixed-1.0.yml
+
+# validate deployment
+> k get pod
+# example
+NAME                                READY   STATUS    RESTARTS   AGE
+message-service-5566ff65cd-c5872    1/1     Running   0          19m
+message-service-5566ff65cd-gvcqj    1/1     Running   0          19m
+message-service-5566ff65cd-mxqmj    1/1     Running   0          19m
+
+> k get deploy
+# example
+NAME              READY   UP-TO-DATE   AVAILABLE   AGE
+message-service   3/3     3            3           47s
+
+# deploy service exposing a NodePort
+kubectl apply -f service.yml
+
+# access the endpoints on the node and run some curl requests
+kubectl get ep
+# example
+NAME               ENDPOINTS                                         AGE
+billboard-client   10.24.1.62:8080                                   17h
+kubernetes         35.222.17.85:443                                  2d23h
+message-service    10.24.0.41:8080,10.24.1.63:8080,10.24.1.64:8080   17h
+
+# you can access the service also via the NodePort IP of the Service
+kubectl get svc
+# example
+NAME               TYPE           CLUSTER-IP   EXTERNAL-IP     PORT(S)          AGE
+billboard-client   LoadBalancer   10.0.14.43   34.70.147.241   8080:30423/TCP   17h
+kubernetes         ClusterIP      10.0.0.1     <none>          443/TCP          2d23h
+message-service    NodePort       10.0.3.237   <none>          8080:31787/TCP   17h
+
+# run an NGINX pod to access the message-service using the NodePort
+kubectl run nginx --restart=Never --rm --image=nginx -it -- bash
+curl <select-one-message-service-endpoint>
+curl <select-one-message-service-endpoint>/quotes
+exit
+
+# example 
+# Service version indicates : version 1.0 at this time
+# using pod endpoint
+root@nginx:/# curl 10.24.0.41:8080
+{"id":3,"quote":"Service version: 1.0 - Quote: Failure is success in progress","author":"Anonymous"}
+
+root@nginx:/# curl 10.0.3.237:8080
+# Service version indicates : version 1.0 at this time
+# using service NodePort IP
+{"id":5,"quote":"Service version: 1.0 - Quote: The shortest answer is doing","author":"Lord Herbert"}
+
+# Update the deployment to version 1.1 
+# for demo purposes, an environment variable is also modified to indicate the version
+# to update only the image, the K8s set image command can be used
+kubectl apply -f deployment-fixed-1.1.yml 
+
+# example - how to update the image in a deployment
+set image deployment message-service message-service=triathlonguy/message-service:1.1
+```
+
+#### Observe how all pods are being shut down, befoire the pods for the new version are being started
+```shell
+> kubectl get pod
+NAME                                READY   STATUS        RESTARTS   AGE
+billboard-client-6f6d7858d9-qhmv9   1/1     Running       0          17h
+message-service-5566ff65cd-c5872    1/1     Terminating   0          28m
+message-service-5566ff65cd-gvcqj    1/1     Terminating   0          28m
+message-service-5566ff65cd-mxqmj    1/1     Terminating   0          28m
+
+message-service-58744dd6c9-jsprc    0/1     Pending       0          0s
+message-service-58744dd6c9-jsprc    0/1     ContainerCreating   0          0s
+message-service-58744dd6c9-r5bkq    0/1     Pending             0          0s
+message-service-58744dd6c9-r5bkq    0/1     ContainerCreating   0          0s
+message-service-58744dd6c9-bxswq    0/1     Pending             0          0s
+message-service-58744dd6c9-bxswq    0/1     ContainerCreating   0          0s
+message-service-58744dd6c9-r5bkq    1/1     Running             0          2s
+message-service-58744dd6c9-bxswq    1/1     Running             0          2s
+message-service-58744dd6c9-jsprc    1/1     Running             0          2s
+
+billboard-client-6f6d7858d9-qhmv9   1/1     Running   0          17h
+message-service-58744dd6c9-bxswq    1/1     Running   0          25s
+message-service-58744dd6c9-jsprc    1/1     Running   0          25s
+message-service-58744dd6c9-r5bkq    1/1     Running   0          25s
+```
+
+#### Observe the updated deployment by running a fresh curl request
+```shell
+# from the NGINX instance, run the curl command again the service again
+# note that version is 1.1
+# using service NodePort IP
+# Service version indicates : version 1.1 at this time
+root@nginx:/# curl 10.0.3.237:8080
+{"id":2,"quote":"Service version: 1.1 - Quote: While there's life, there's hope","author":"Marcus Tullius Cicero"
+```
+
+#### Clean-up resources after running this demo for fixed deployments
+```shell
+kubectl get deploy
+kubectl get svc
+
+# delete existing resources
+kubectl delete deploy message-service
+```
 
 <a name="5"></a>
 # Blue-Green Deployment

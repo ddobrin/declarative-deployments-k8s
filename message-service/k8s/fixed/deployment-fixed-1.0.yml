@@ -13,13 +13,13 @@ spec:
     metadata:
       labels:
         app: message-service
-        version: blue
+        version: "1.0"
     spec:
       serviceAccountName: "spring-cloud"
       imagePullSecrets:
         - name: regcreddocker
       containers:
-      - image: triathlonguy/message-service:blue
+      - image: triathlonguy/message-service:1.0
         imagePullPolicy: IfNotPresent
         name: message-service
         ports:
@@ -28,7 +28,7 @@ spec:
           - name: "JAVA_OPTS"
             value: "-XshowSettings:vm -XX:MaxRAMPercentage=75.0"
           - name: "service_version"
-            value: "blue"
+            value: "1.0"
         resources:
           requests:
             cpu: 250m
