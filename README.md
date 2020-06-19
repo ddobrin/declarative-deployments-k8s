@@ -145,6 +145,13 @@ kubectl delete deploy billboard-client
 <a name="3"></a>
 # Rolling Deployment
 
+![Rolling Deployment - Prior to Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/RD1.png)  
+
+
+![Rolling Deployment - During Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/RD2.png)  
+
+![Rolling Deployment - Post Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/imagesRD3.png)  
+
 #### Clean-up resources before running this demo
 ```shell
 kubectl get deploy
@@ -233,6 +240,13 @@ kubectl delete deploy message-service
 
 <a name="4"></a>
 # Fixed Deployment
+
+![Fixed Deployment - Prior to Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/FD1.png)  
+
+
+![Fixed Deployment - During Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/FD2.png)  
+
+![Fixed Deployment - Post Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/FD3.png)  
 
 #### Clean-up resources before running this demo
 ```shell
@@ -353,6 +367,18 @@ kubectl delete deploy message-service
 <a name="5"></a>
 # Blue-Green Deployment
 
+![Blue-Green Deployment - Prior to Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/BGD1.png)  
+
+![Blue-Green Deployment - During Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/BGD2.png)  
+
+![Blue-Green Deployment - Post Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/BGD3.png)  
+
 <a name="6"></a>
 # Canary Deployment
 
+![Canary Deployment - Prior to Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/CD1.png)  
+
+
+![Canary Deployment - During Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/CD2.png)  
+
+![Canary Deployment - Post Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/CD3.png)  
