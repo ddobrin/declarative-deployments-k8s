@@ -3,7 +3,7 @@ kind: Service
 metadata:
   labels:
     app: message-service
-  name: message-service-canary
+  name: message-service
   namespace: default
 spec:
   ports:

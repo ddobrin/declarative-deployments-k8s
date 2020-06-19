@@ -1,9 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: message-service-canary
+  name: message-service
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: message-service
@@ -11,13 +11,13 @@ spec:
     metadata:
       labels:
         app: message-service
-        version: canary
+        version: "1.0"
     spec:
       serviceAccountName: "spring-cloud"
       imagePullSecrets:
         - name: regcreddocker
       containers:
-      - image: triathlonguy/message-service:bluev2
+      - image: triathlonguy/message-service:1.0
         imagePullPolicy: IfNotPresent
         name: message-service
         ports:
@@ -26,7 +26,7 @@ spec:
           - name: "JAVA_OPTS"
             value: "-XshowSettings:vm -XX:MaxRAMPercentage=75.0"
           - name: "service_version"
-            value: "canary"
+            value: "1.0"
         resources:
           requests:
             cpu: 250m

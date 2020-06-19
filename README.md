@@ -150,7 +150,9 @@ kubectl delete deploy billboard-client
 
 ![Rolling Deployment - During Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/RD2.png)  
 
-![Rolling Deployment - Post Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/imagesRD3.png)  
+![Rolling Deployment - Post Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/RD3.png)  
+
+
 
 #### Clean-up resources before running this demo
 ```shell
@@ -260,7 +262,7 @@ kubectl delete deploy message-service
 ```shell
 # deploy v 1.0
 > cd <repo_root>/message-service/k8s/fixed
-> kubectl deployment-fixed-1.0.yml
+> kubectl apply -f deployment-fixed-1.0.yml
 
 # validate deployment
 > k get pod
@@ -362,6 +364,7 @@ kubectl get svc
 
 # delete existing resources
 kubectl delete deploy message-service
+kubectl delete svc message-service
 ```
 
 <a name="5"></a>
@@ -372,6 +375,181 @@ kubectl delete deploy message-service
 ![Blue-Green Deployment - During Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/BGD2.png)  
 
 ![Blue-Green Deployment - Post Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/BGD3.png)  
+
+#### Clean-up resources before running this Blue-green demo
+```shell
+kubectl get deploy
+kubectl get svc
+
+# delete existing resources
+kubectl delete deploy message-service-blue
+kubectl delete deploy message-service-green
+```
+
+#### Start deploying the resources for the Blue-green Deployment demo
+```shell
+# deploy v 1.0
+> cd <repo_root>/message-service/k8s/bluegreen
+> kubectl apply -f deployment-blue.yml
+
+# validate deployment
+> kubectl get pod
+# example
+NAME                                     READY   STATUS    RESTARTS   AGE
+billboard-client-6f6d7858d9-qhmv9        1/1     Running       0          20h
+message-service-blue-5f77f88f4f-hk99f    1/1     Running       0          3s
+message-service-blue-5f77f88f4f-j6hvg    1/1     Running       0          3s
+message-service-blue-5f77f88f4f-lgq9x    1/1     Running       0          3s
+
+> kubectl get deploy
+NAME                   READY   UP-TO-DATE   AVAILABLE   AGE
+billboard-client       1/1     1            1           20h
+message-service-blue   3/3     3            3           20s
+
+# deploy service exposing a NodePort
+kubectl apply -f service-blue.yml
+
+# access the endpoints on the node and run some curl requests
+kubectl get ep
+# example
+NAME               ENDPOINTS                                         AGE
+billboard-client   10.24.1.62:8080                                   20h
+kubernetes         35.222.17.85:443                                  3d2h
+message-service    10.24.0.47:8080,10.24.0.48:8080,10.24.1.75:8080   6s
+
+# you can access the service also via the NodePort IP of the Service
+kubectl get svc
+# example
+# note the selector matching the label "blue"
+NAME               TYPE           CLUSTER-IP    EXTERNAL-IP     PORT(S)          AGE    SELECTOR 
+billboard-client   LoadBalancer   10.0.14.43    34.70.147.241   8080:30423/TCP   21h    app=billboard-client
+kubernetes         ClusterIP      10.0.0.1      <none>          443/TCP          3d3h   <none>
+message-service    NodePort       10.0.11.113   <none>          8080:32072/TCP   18m    app=message-service,version=blue
+
+# run an NGINX pod to access the message-service using the NodePort
+kubectl run nginx --restart=Never --rm --image=nginx -it -- bash
+curl <select-one-message-service-endpoint>
+curl <select-one-message-service-endpoint>/quotes
+exit
+
+# example 
+# Service version indicates : version "blue" at this time
+# using pod endpoint
+root@nginx:/#  curl 10.24.0.47:8080
+{"id":3,"quote":"Service version: 1.0 - Quote: Failure is success in progress","author":"Anonymous"}
+
+root@nginx:/# curl 10.0.11.113:8080
+# Service version indicates : version 1.0 at this time
+# using service NodePort IP
+{"id":5,"quote":"Service version: 1.0 - Quote: The shortest answer is doing","author":"Lord Herbert"}
+```
+
+#### Update the deployment to version "green" 
+```shell
+# for demo purposes, an environment variable is also modified to indicate the version "green"
+# to update only the image, the K8s set image command can be used
+kubectl apply -f deployment-green.yml 
+
+# example - how to update the image in a deployment
+set image deployment message-service message-service=triathlonguy/message-service:green
+```
+
+#### Observe the newly added green deployment, in parallel with the blue deployment
+
+```shell
+> kubectl get deploy
+# example
+NAME                    READY   UP-TO-DATE   AVAILABLE   AGE
+billboard-client        1/1     1            1           21h
+message-service-blue    3/3     3            3           10m
+message-service-green   3/3     3            3           4s
+
+> kubectl get pod
+# example
+NAME                                     READY   STATUS    RESTARTS   AGE
+billboard-client-6f6d7858d9-qhmv9        1/1     Running   0          21h
+message-service-blue-5f77f88f4f-hk99f    1/1     Running   0          12m
+message-service-blue-5f77f88f4f-j6hvg    1/1     Running   0          12m
+message-service-blue-5f77f88f4f-lgq9x    1/1     Running   0          12m
+message-service-green-5b745bd4f6-2k9zz   1/1     Running   0          2m15s
+message-service-green-5b745bd4f6-n29gw   1/1     Running   0          2m15s
+message-service-green-5b745bd4f6-pp44h   1/1     Running   0          2m15s
+
+# from the NGINX instance, run the curl command again the service again
+# note that version is still "blue"
+# using service NodePort IP
+# Service version indicates : version blue at this time
+root@nginx:/# curl 10.0.11.113:8080
+{"id":2,"quote":"Service version: blue - Quote: While there's life, there's hope","author":"Marcus Tullius Cicero"}
+
+# you can use also the external IP of the billboard-client
+> curl 34.70.147.241:8080/message
+# example
+Service version: blue - Quote: Failure is success in progress -- Anonymous
+```
+
+#### The service still matches the same pods with selector "blue"
+
+#### Switch traffic by updating the service definition to use the selector "green"
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+ ...
+  labels:
+    app: message-service
+  name: message-service
+  namespace: default
+  resourceVersion: "1043830"
+  selfLink: /api/v1/namespaces/default/services/message-service
+  uid: 41f79216-b260-11ea-bb6b-42010a800107
+spec:
+  clusterIP: 10.0.11.113
+  externalTrafficPolicy: Cluster
+  ports:
+  - nodePort: 32072
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: message-service
+    version: green
+ ...
+```
+
+```shell
+> kubectl apply -f service-green.yml
+# example
+# Note the selector matching the label "green"
+NAME               TYPE           CLUSTER-IP    EXTERNAL-IP     PORT(S)          AGE    SELECTOR
+billboard-client   LoadBalancer   10.0.14.43    34.70.147.241   8080:30423/TCP   21h    app=billboard-client
+kubernetes         ClusterIP      10.0.0.1      <none>          443/TCP          3d3h   <none>
+message-service    NodePort       10.0.11.113   <none>          8080:32072/TCP   18m    app=message-service,version=green
+
+# using the external IP of the billboard-client, we can validate that the traffic has moved to the green deployment
+> curl 34.70.147.241:8080/message
+Service version: green - Quote: Success demands singleness of purpose -- Vincent Lombardi
+
+# from within the NGINX instance, we can use the NodePort IP of the message-service
+> curl 10.0.11.113:8080
+{"id":2,"quote":"Service version: green - Quote: While there's life, there's hope","author":"Marcus Tullius Cicero"}
+```
+
+#### At this time, the Blue deployment can safely be removed
+```shell
+> kubectl delete deploy message-service-blue
+```
+
+#### Clean-up resources after running this demo for rolling deployments
+```shell
+kubectl get deploy
+kubectl get svc
+
+# delete existing resources
+kubectl delete deploy message-service-blue
+kubectl delete deploy message-service-green
+kubectl delete svc message-service
+```
 
 <a name="6"></a>
 # Canary Deployment
