@@ -16,14 +16,7 @@ The concept of Deployments in Kubernetes encapsulates the upgrade and rollback p
 It allows us to describe how an application should be updated, based on different strategies and allowing for the fine-tuning of the various aspects of the deployment process
 
 
-## Connecting applications in Kubernetes - the K8s model for connecting containers 
-Once you have a continuously running, replicated application you can expose it on a network. Before discussing the Kubernetes approach to networking, it is worthwhile to contrast it with the “normal” way networking works with Docker.
-
-By default, Docker uses host-private networking, so containers can talk to other containers only if they are on the same machine. In order for Docker containers to communicate across nodes, there must be allocated ports on the machine’s own IP address, which are then forwarded or proxied to the containers. This obviously means that containers must either coordinate which ports they use very carefully or ports must be allocated dynamically.
-
-Coordinating port allocations across multiple developers or teams that provide containers is very difficult to do at scale, and exposes users to cluster-level issues outside of their control. Kubernetes assumes that pods can communicate with other pods, regardless of which host they land on. Kubernetes gives every pod its own cluster-private IP address, so you do not need to explicitly create links between pods or map container ports to host ports. This means that containers within a Pod can all reach each other’s ports on localhost, and all pods in a cluster can see each other without NAT. The rest of this document elaborates on how you can run reliable services on such a networking model.
-
-How to explore the declarative models:
+## How to explore Declarative Deployment Models:
 1. [Demo - Initial Setup](#1)
 2. [Demo - Install the Demo Client app](#2)
 
@@ -133,6 +126,9 @@ curl <external IP>:8080/message
 > curl 34.70.147.241:8080/message
 Service version: 1.1 - Quote: The shortest answer is doing -- Lord Herbert
 ```
+
+#### Access the billboard-client in the browser - at the ExternalIP of the service and the associated port
+![Client app](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/v1.0.png)  
 
 __Please note:__
 * The service for the client app will be available to route requests to the message-service and does not have to be restarted after testing various deployment strategies
