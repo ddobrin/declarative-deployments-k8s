@@ -560,3 +560,166 @@ kubectl delete svc message-service
 ![Canary Deployment - During Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/CD2.png)  
 
 ![Canary Deployment - Post Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/CD3.png)  
+
+#### Clean-up resources before running this Canary Deployment demo
+```shell
+kubectl get deploy
+kubectl get svc
+
+# delete existing resources
+kubectl delete deploy message-service
+```
+#### Start deploying the resources for the Canary Deployment demo
+```shell
+# deploy v 1.0
+> cd <repo_root>/message-service/k8s/canary
+> kubectl apply -f deployment-1.0.yml
+
+# validate deployment
+> kubectl get pod
+# example
+NAME                                READY   STATUS    RESTARTS   AGE
+billboard-client-6f6d7858d9-qhmv9   1/1     Running   0          24h
+message-service-5566ff65cd-6mpgv    1/1     Running   0          23s
+message-service-5566ff65cd-jqxkq    1/1     Running   0          23s
+message-service-5566ff65cd-mjp4q    1/1     Running   0          23s
+
+> kubectl get deploy
+# example
+NAME               READY   UP-TO-DATE   AVAILABLE   AGE
+billboard-client   1/1     1            1           24h
+message-service    3/3     3            3           46s
+
+# deploy service exposing a NodePort
+> kubectl apply -f service-canary.yml 
+
+# access the endpoints on the node and run some curl requests
+> kubectl get ep
+# example
+NAME               ENDPOINTS                                         AGE
+billboard-client   10.24.1.62:8080                                   24h
+kubernetes         35.222.17.85:443                                  3d6h
+message-service    10.24.0.53:8080,10.24.1.81:8080,10.24.1.82:8080   20s
+
+# you can access the service also via the NodePort IP of the Service
+> kubectl get svc
+# example
+NAME               TYPE           CLUSTER-IP   EXTERNAL-IP     PORT(S)          AGE
+billboard-client   LoadBalancer   10.0.14.43   34.70.147.241   8080:30423/TCP   24h
+kubernetes         ClusterIP      10.0.0.1     <none>          443/TCP          3d6h
+message-service    NodePort       10.0.15.51   <none>          8080:30296/TCP   57s
+
+# access the message-service using the public IP of the billboard-client
+> curl 34.70.147.241:8080/message
+Service version: 1.0 - Quote: Never, never, never give up -- Winston Churchill
+
+# run an NGINX pod to access the message-service using the NodePort
+> kubectl run nginx --restart=Never --rm --image=nginx -it -- bash
+curl <select-one-message-service-endpoint>
+curl <select-one-message-service-endpoint>/quotes
+exit
+
+# example 
+# Service version indicates : version 1.0 at this time
+# using pod endpoint
+root@nginx:/# curl 10.24.0.53:8080
+{"id":5,"quote":"Service version: 1.0 - Quote: The shortest answer is doing","author":"Lord Herbert"}
+
+root@nginx:/# curl curl 10.0.15.51:8080
+# Service version indicates : version 1.0 at this time
+# using service NodePort IP
+{"id":4,"quote":"Service version: 1.0 - Quote: Success demands singleness of purpose","author":"Vincent Lombardi"}
+```
+#### Scale down version 1.0 of the service from 3 to 2 replicas and deploy the canary version, v 1.1, with one replica
+#### The number of instances running at the same time remains the same
+
+```shell
+> kubectl scale deploy message-service --replicas=2
+> kubectl get pod
+# example
+NAME                                READY   STATUS        RESTARTS   AGE
+billboard-client-6f6d7858d9-qhmv9   1/1     Running       0          24h
+message-service-5566ff65cd-6mpgv    1/1     Running       0          9m11s
+message-service-5566ff65cd-jqxkq    1/1     Running       0          9m11s
+message-service-5566ff65cd-mjp4q    1/1     Terminating   0          9m11s
+
+NAME                                READY   STATUS    RESTARTS   AGE
+billboard-client-6f6d7858d9-qhmv9   1/1     Running   0          24h
+message-service-5566ff65cd-6mpgv    1/1     Running   0          15m
+message-service-5566ff65cd-jqxkq    1/1     Running   0          15m
+
+# Create the deployment with version 1.1 with 1 single replica, to maintain the previous replica count
+# for demo purposes, an environment variable is also modified to indicate the version
+> kubectl apply -f deployment-canary.yml 
+# example
+NAME                                      READY   STATUS    RESTARTS   AGE
+billboard-client-6f6d7858d9-qhmv9         1/1     Running   0          25h
+message-service-5566ff65cd-6mpgv          1/1     Running   0          36m
+message-service-5566ff65cd-jqxkq          1/1     Running   0          36m
+message-service-canary-747cbf84b7-jtrqx   1/1     Running   0          5s
+```
+
+#### Requests will be load-balanced between the old version (1.0) and the new one (canary) according to the ratio of the running pods
+```shell
+# run an NGINX pod to access the message-service using the NodePort
+> kubectl run nginx --restart=Never --rm --image=nginx -it -- bash
+curl <select-one-message-service-endpoint>
+curl <select-one-message-service-endpoint>/quotes
+exit
+
+# example 
+# Service version indicates : version 1.0 at this time
+# using pod endpoint
+root@nginx:/# curl 10.24.1.81:8080 
+{"id":5,"quote":"Service version: 1.0 - Quote: The shortest answer is doing","author":"Lord Herbert"}
+
+# Access the canary service : version "canary" at this time
+root@nginx:/# curl 10.24.1.83:8080
+{"id":3,"quote":"Service version: canary - Quote: Failure is success in progress","author":"Anonymous"}
+
+# exit the NGINX instance
+exit
+
+# accessing the service using the load balanced billboard-client service illustrates how requests are load balanced against the 1.0 respectively canary versions
+> curl  34.70.147.241:8080/message
+Service version: 1.0 - Quote: Never, never, never give up -- Winston Churchill
+> curl  34.70.147.241:8080/message
+Service version: canary - Quote: The shortest answer is doing -- Lord Herbert
+> curl  34.70.147.241:8080/message
+Service version: 1.0 - Quote: Success demands singleness of purpose -- Vincent Lombardi
+```
+
+#### The canary deployment can be scaled up to the original number of instances for version 1.0
+#### Version 1.0 instances can be deleted at this time, without downtime to service clients
+```shell
+> kubectl scale deploy message-service-canary --replicas=3
+> kubectl delete deploy message-service-canary
+
+# example
+NAME                                      READY   STATUS        RESTARTS   AGE
+billboard-client-6f6d7858d9-qhmv9         1/1     Running       0          2d20h
+message-service-5566ff65cd-6mpgv          1/1     Terminating   0          43h
+message-service-5566ff65cd-jqxkq          1/1     Terminating   0          43h
+message-service-canary-747cbf84b7-b5xgj   1/1     Running       0          12s
+message-service-canary-747cbf84b7-jtrqx   1/1     Running       0          43h
+message-service-canary-747cbf84b7-sjdm4   1/1     Running       0          12s
+...
+NAME                                      READY   STATUS    RESTARTS   AGE
+billboard-client-6f6d7858d9-qhmv9         1/1     Running   0          2d20h
+message-service-canary-747cbf84b7-b5xgj   1/1     Running   0          73s
+message-service-canary-747cbf84b7-jtrqx   1/1     Running   0          43h
+message-service-canary-747cbf84b7-sjdm4   1/1     Running   0          73s
+
+# number of pods reflect the desired replicas for the canary version of the service
+# the instances for the previous version have been deleted
+```
+
+#### Clean-up resources after running this demo for canary deployments
+```shell
+kubectl get deploy
+kubectl get svc
+
+# delete existing resources
+kubectl delete deploy message-service
+kubectl delete svc message-service
+```
