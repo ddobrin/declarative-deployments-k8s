@@ -17,7 +17,7 @@ spec:
         - name: regcreddocker
       containers:
       - image: triathlonguy/billboard-client:blue
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         name: billboard-client
         ports:
           - containerPort: 8080

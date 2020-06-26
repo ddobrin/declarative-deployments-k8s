@@ -23,7 +23,7 @@
 
   <modules>
     <module>message-service</module>
-    <module>eureka-server</module>
+    <!-- <module>eureka-server</module> -->
     <module>billboard-client</module>
   </modules>
 

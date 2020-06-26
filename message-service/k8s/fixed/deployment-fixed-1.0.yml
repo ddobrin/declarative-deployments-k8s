@@ -20,7 +20,7 @@ spec:
         - name: regcreddocker
       containers:
       - image: triathlonguy/message-service:1.0
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         name: message-service
         ports:
           - containerPort: 8080
@@ -31,23 +31,23 @@ spec:
             value: "1.0"
         resources:
           requests:
-            cpu: 250m
-            memory: 384M
+            cpu: 1000m
+            memory: 1024M
           limits:
-            cpu: 250m
-            memory: 384M
-#        livenessProbe:
-#          initialDelaySeconds: 10
-#          periodSeconds: 5
-#          httpGet:
-#            port: 8080
-#            path: /alive
-#        readinessProbe:
-#          initialDelaySeconds: 5
-#          periodSeconds: 5
-#          httpGet:
-#            port: 8080
-#            path: /actuator/health
+            cpu: 1000m
+            memory: 1024M
+        livenessProbe:
+          initialDelaySeconds: 20
+          periodSeconds: 5
+          httpGet:
+            port: 8080
+            path: /alive
+        readinessProbe:
+          initialDelaySeconds: 20
+          periodSeconds: 5
+          httpGet:
+            port: 8080
+            path: /actuator/health
 
 
 

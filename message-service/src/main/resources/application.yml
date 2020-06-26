@@ -1,5 +1,24 @@
 foo: "value from application.yml"
-service_version: blue
+
+app:
+  quotes:
+    - id: 1
+      quote: 'Never, never, never give up'
+      author: 'Winston Churchill'
+    - id: 2
+      quote: 'While there''s life, there''s hope'
+      author: 'Marcus Tullius Cicero'
+    - id: 3
+      quote: 'Failure is success in progress'
+      author: 'Anonymous'
+    - id: 4
+      quote: 'Success demands singleness of purpose'
+      author: 'Vincent Lombardi'
+    - id: 5
+      quote: 'The shortest answer is doing'
+      author: 'Lord Herbert'
+
+service_version: 1.0
 
 spring:
   cloud:

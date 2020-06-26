@@ -17,4 +17,5 @@ public class FooController {
   {
     return fooValue;
   }
+
 }
