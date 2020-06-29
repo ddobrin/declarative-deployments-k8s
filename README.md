@@ -131,7 +131,7 @@ Service version: 1.1 - Quote: The shortest answer is doing -- Lord Herbert
 ![Client app](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/v1.0.png)  
 
 __Please note:__
-* The service for the client app will be available to route requests to the message-service and does not have to be restarted after testing various deployment strategies
+* The service for the client app will be available to route requests to the message-service and does not have to be restarted while testing the resepective deployment strategies
 
 #### Client-app cleanup 
 ```shell
@@ -141,6 +141,18 @@ kubectl delete deploy billboard-client
 <a name="3"></a>
 # Rolling Deployment
 
+#### Pros:
+* Zero downtime during the update process
+* Ability to control the rate of a new container rollout
+
+#### Cons:
+* During the update, two versions of the container are running at the same time
+
+#### How does it work :
+* Deployment creates a new ReplicaSet and the respective Pods
+* Deployment replaces the old containers with the previous service version with the new ones
+* Deployment allows you to control the range of available and excess Pods
+
 ![Rolling Deployment - Prior to Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/RD1.png)  
 
 
@@ -148,7 +160,43 @@ kubectl delete deploy billboard-client
 
 ![Rolling Deployment - Post Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/RD3.png)  
 
+#### The Deployment comfiguration
+The Deployment uses the `RollingUpdate` strategy and allows full control over hopw many instances are unavailable at any given moment in time:
+```yaml
+kind: Deployment
+metadata:
+  name: message-service
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: 
+      maxSurge: 1
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: message-service
+  template:
+    metadata:
+      labels:
+        app: message-service
+...        
+```
 
+The Service selects all nodes for the message-service matching the label:
+```yaml
+kind: Service
+metadata:
+  labels:
+    app: message-service
+  name: message-service
+  namespace: default
+spec:
+...
+  selector:
+    app: message-service
+  type: NodePort
+```
 
 #### Clean-up resources before running this demo
 ```shell
