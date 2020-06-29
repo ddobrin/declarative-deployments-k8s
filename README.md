@@ -148,7 +148,7 @@ kubectl delete deploy billboard-client
 #### Cons:
 * During the update, two versions of the container are running at the same time
 
-#### How does it work :
+#### How does it work:
 * Deployment creates a new ReplicaSet and the respective Pods
 * Deployment replaces the old containers with the previous service version with the new ones
 * Deployment allows you to control the range of available and excess Pods
@@ -287,12 +287,55 @@ kubectl delete deploy message-service
 <a name="4"></a>
 # Fixed Deployment
 
-![Fixed Deployment - Prior to Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/FD1.png)  
+#### Pros:
+* Single version serves requests at any moment in time
+* Simpler process for service consumers, as they do not have to handle multiple versions at the same time
 
+#### Cons:
+* There is downtime while old containers are stopped, and the new ones are starting
+
+#### How does it work:
+* Deployment stops first all containers deployed for the old version
+* Clients experience an outage, as no service is available to process requests
+* Deployment creates the new containers
+* Client accesses requests serviced by the new version
+
+![Fixed Deployment - Prior to Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/FD1.png)  
 
 ![Fixed Deployment - During Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/FD2.png)  
 
 ![Fixed Deployment - Post Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/FD3.png)  
+
+#### The Deployment comfiguration
+The Deployment uses the `Recreate` strategy as it terminates all pods from a deployment before creating the pods for the new version:
+```yaml
+kind: Deployment
+metadata:
+  name: message-service
+spec:
+  replicas: 3
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: message-service
+...        
+```
+
+The Service selects all nodes for the message-service matching the label:
+```yaml
+kind: Service
+metadata:
+  labels:
+    app: message-service
+  name: message-service
+  namespace: default
+spec:
+...
+  selector:
+    app: message-service
+  type: NodePort
+```
 
 #### Clean-up resources before running this demo
 ```shell
@@ -414,11 +457,60 @@ kubectl delete svc message-service
 <a name="5"></a>
 # Blue-Green Deployment
 
+#### Pros:
+* Single version serves requests at any moment in time
+* Zero downtime during the update
+* Allows precise control of switching to the new version
+
+#### Cons:
+* Requires 2x capacity while both blue and green versions are up
+* Manual intervention for switch
+
+#### How does it work :
+* A second Deployment is created manually for the new version (green)
+* The new version (green) does not serve client requests yet and can be tested internally to validate the deployment
+* The Service Selector in K8s is being updated to route traffic to the new version (green), followed by the removal of the old (blue) Deployment
+
 ![Blue-Green Deployment - Prior to Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/BGD1.png)  
 
 ![Blue-Green Deployment - During Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/BGD2.png)  
 
 ![Blue-Green Deployment - Post Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/BGD3.png)  
+
+#### The Deployment comfiguration
+The Deployment does not provide a specific strategy, as the service exposing the deployment is the K8s resource participating in the deployment process which selects which pod instances are exposed to client requests. In this excerpt, 2 labels are used, `message-service` and `blue`:
+```yaml
+kind: Deployment
+metadata:
+  name: message-service-blue
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: message-service
+  template:
+    metadata:
+      labels:
+        app: message-service
+        version: blue
+...        
+```
+
+The Service selects all nodes for the message-service matching multiple labels: the app + the version. This allows the selection of the pods matching a specific version. This excerpt has the Service match 2 labels `message-service` and 'blue`:
+```yaml
+kind: Service
+metadata:
+  labels:
+    app: message-service
+  name: message-service
+  namespace: default
+spec:
+...
+  selector:
+    app: message-service
+    version: blue
+  type: NodePort
+```
 
 #### Clean-up resources before running this Blue-green demo
 ```shell
@@ -598,12 +690,75 @@ kubectl delete svc message-service
 <a name="6"></a>
 # Canary Deployment
 
-![Canary Deployment - Prior to Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/CD1.png)  
 
+#### Pros:
+* Reduces the risk of a new service version by controlling access to the new version to a subset of consumers
+* Allows precise control of full switch to the new version
+
+#### Cons:
+* Manual intervention for switch
+* Consumers failing to handle multiple versions simultaneously see failures
+
+#### How does it work:
+* A second Deployment is created manually for the new version (canary) with a small set of instances
+* Some of the client requests are now redirected to the canary version
+* Once there is confidence that the canary version works as expected, traffic is fully scaled up for the canary version and scaled to zero for the old one
+
+![Canary Deployment - Prior to Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/CD1.png)  
 
 ![Canary Deployment - During Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/CD2.png)  
 
 ![Canary Deployment - Post Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/CD3.png)  
+
+#### The Deployment comfiguration
+The Deployment does not provide a specific strategy, as the service exposing the deployment is the K8s resource participating in the deployment process which selects which pod instances are exposed to client requests. In this excerpt, 2 labels are used, `message-service` and `1.0`, the canary deployment will use `message-service` and `canary`, which will allow the Service to match pods by a single label `message-service`:
+```yaml
+# initial deployment
+kind: Deployment
+metadata:
+  name: message-service
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: message-service
+  template:
+    metadata:
+      labels:
+        app: message-service
+        version: "1.0"
+...        
+# canary deployment
+kind: Deployment
+metadata:
+  name: message-service-canary
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: message-service
+  template:
+    metadata:
+      labels:
+        app: message-service
+        version: canary
+...
+```
+
+The Service selects all nodes for the message-service matching the labels for the app:
+```yaml
+kind: Service
+metadata:
+  labels:
+    app: message-service
+  name: message-service
+  namespace: default
+spec:
+...
+  selector:
+    app: message-service
+  type: NodePort
+```
 
 #### Clean-up resources before running this Canary Deployment demo
 ```shell
