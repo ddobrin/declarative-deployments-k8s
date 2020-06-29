@@ -160,7 +160,7 @@ kubectl delete deploy billboard-client
 
 ![Rolling Deployment - Post Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/RD3.png)  
 
-#### The Deployment comfiguration
+#### The Deployment configuration
 The Deployment uses the `RollingUpdate` strategy and allows full control over hopw many instances are unavailable at any given moment in time:
 ```yaml
 kind: Deployment
@@ -306,7 +306,7 @@ kubectl delete deploy message-service
 
 ![Fixed Deployment - Post Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/FD3.png)  
 
-#### The Deployment comfiguration
+#### The Deployment configuration
 The Deployment uses the `Recreate` strategy as it terminates all pods from a deployment before creating the pods for the new version:
 ```yaml
 kind: Deployment
@@ -477,7 +477,7 @@ kubectl delete svc message-service
 
 ![Blue-Green Deployment - Post Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/BGD3.png)  
 
-#### The Deployment comfiguration
+#### The Deployment configuration
 The Deployment does not provide a specific strategy, as the service exposing the deployment is the K8s resource participating in the deployment process which selects which pod instances are exposed to client requests. In this excerpt, 2 labels are used, `message-service` and `blue`:
 ```yaml
 kind: Deployment
@@ -710,7 +710,7 @@ kubectl delete svc message-service
 
 ![Canary Deployment - Post Deployment](https://github.com/ddobrin/declarative-deployments-k8s/blob/master/images/CD3.png)  
 
-#### The Deployment comfiguration
+#### The Deployment configuration
 The Deployment does not provide a specific strategy, as the service exposing the deployment is the K8s resource participating in the deployment process which selects which pod instances are exposed to client requests. In this excerpt, 2 labels are used, `message-service` and `1.0`, the canary deployment will use `message-service` and `canary`, which will allow the Service to match pods by a single label `message-service`:
 ```yaml
 # initial deployment
